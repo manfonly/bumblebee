@@ -51,7 +51,10 @@ export default class GameScene extends Phaser.Scene {
         
         const treasure = this.treasures.create(x, 0, imageKey);
         treasure.setScale(0.1);
-        treasure.type = type; // 存储宝石类型
+        treasure.type = type;
+        
+        // 设置宝箱的碰撞体积
+        treasure.body.setSize(treasure.width * 0.8, treasure.height * 0.8);
         
         // 在宝石上方显示类型文本
         const text = this.add.text(x, -20, type, {
@@ -76,6 +79,7 @@ export default class GameScene extends Phaser.Scene {
         
         // 启用玩家飞机的物理系统
         this.physics.add.existing(this.player);
+        this.player.body.setSize(this.player.width * 0.8, this.player.height * 0.8); // 添加这行，设置碰撞体积
 
         // 修改状态显示的字体大小和添加速度显示
         this.scoreText = this.add.text(16, 16, 'Score: 0', { fontSize: '22px', fill: '#fff' });
@@ -128,16 +132,16 @@ export default class GameScene extends Phaser.Scene {
             repeat: 0          // 播放一次就停止
         });
 
+        // 创建宝箱组 - 移到这里
+        this.treasures = this.physics.add.group();
+
         // 设置碰撞检测
         this.physics.add.collider(this.bullets, this.enemies, this.hitEnemy, null, this);
         this.physics.add.overlap(this.player, this.enemies, this.gameOver, null, this);
-        this.physics.add.overlap(this.player, this.treasures, this.collectTreasure, null, this); // 添加宝箱碰撞检测
+        this.physics.add.overlap(this.player, this.treasures, this.collectTreasure, null, this);
 
         // 立即生成第一波敌机
         this.spawnEnemyWave();
-
-        // 创建宝箱组
-        this.treasures = this.physics.add.group();
 
         // 每5秒生成一个宝箱
         this.time.addEvent({
@@ -264,6 +268,7 @@ export default class GameScene extends Phaser.Scene {
     }
     // 添加收集宝箱的方法
     collectTreasure(player, treasure) {
+        console.log('Treasure collected:', treasure);
         // 销毁宝箱文本标签
         if (treasure.textLabel) {
             treasure.textLabel.destroy();
