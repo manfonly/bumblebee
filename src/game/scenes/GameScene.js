@@ -155,7 +155,7 @@ export default class GameScene extends Phaser.Scene {
     update() {
         // 更新子弹位置
         this.bullets.children.each((bullet) => {
-            bullet.y -= 5;
+            bullet.y -= 7.5;  // 从5提升到7.5，提速50%
             if (bullet.y < 0) {
                 bullet.destroy();
             }
@@ -207,7 +207,27 @@ export default class GameScene extends Phaser.Scene {
         }
     }
     fireBullet() {
-        const bullet = this.bullets.create(this.player.x, this.player.y - 20, 'bullet');
+        const fireChance = this.hasEWBoost ? 0.6 : 0.4; // EW加速后80%概率发射，否则60%概率发射
+        if (Math.random() < fireChance) {
+            const bullet = this.bullets.create(this.player.x, this.player.y - 20, 'bullet');
+        }
+    }
+
+    collectTreasure(player, treasure) {
+        console.log('Treasure collected:', treasure);
+        
+        // 处理 EW 宝箱效果
+        if (treasure.type === 'EW' && !this.hasEWBoost) {
+            this.hasEWBoost = true;
+            this.speedText.setText('Speed: MID');  // 添加这行，更新速度显示
+        }
+        
+        // 销毁宝箱文本标签
+        if (treasure.textLabel) {
+            treasure.textLabel.destroy();
+        }
+        // 销毁宝箱
+        treasure.destroy();
     }
 
     hitEnemy(bullet, enemy) {
