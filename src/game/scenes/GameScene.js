@@ -6,6 +6,8 @@ export default class GameScene extends Phaser.Scene {
         this.score = 0;
         this.gameTime = 300; // 总游戏时间300秒
         this.waveInterval = 10; // 每10秒一波敌人
+        this.baseEnemyCount = 5; // 初始敌机数量
+        this.waveCount = 0; // 波数计数
     }
 
     preload() {
@@ -22,12 +24,14 @@ export default class GameScene extends Phaser.Scene {
             endFrame: 8        // 9帧动画
         });
     }
-
     create() {
         // 创建玩家飞机
         this.player = this.add.sprite(400, 550, 'player');
         this.player.setInteractive();
         this.input.setDraggable(this.player);
+        
+        // 启用玩家飞机的物理系统
+        this.physics.add.existing(this.player);
 
         // 创建分数显示
         this.scoreText = this.add.text(16, 16, 'Score: 0', { fontSize: '32px', fill: '#fff' });
@@ -82,7 +86,10 @@ export default class GameScene extends Phaser.Scene {
 
         // 设置碰撞检测
         this.physics.add.collider(this.bullets, this.enemies, this.hitEnemy, null, this);
-        this.physics.add.collider(this.player, this.enemies, this.gameOver, null, this);
+        this.physics.add.overlap(this.player, this.enemies, this.gameOver, null, this);  // 使用 overlap 替代 collider
+
+        // 立即生成第一波敌机
+        this.spawnEnemyWave();
     }
 
     update() {
@@ -104,9 +111,14 @@ export default class GameScene extends Phaser.Scene {
     }
 
     spawnEnemyWave() {
-        for (let i = 0; i < 5; i++) {
+        this.waveCount++;
+        // 计算当前波次的敌机数量（每波增加20%）
+        const enemyCount = Math.floor(this.baseEnemyCount * Math.pow(1.2, this.waveCount - 1));
+        
+        for (let i = 0; i < enemyCount; i++) {
             const x = Phaser.Math.Between(50, 750);
             const enemy = this.enemies.create(x, 0, 'enemy');
+            enemy.setScale(0.8);
         }
     }
 
@@ -140,11 +152,34 @@ export default class GameScene extends Phaser.Scene {
     }
 
     gameOver() {
-        this.scene.pause();
-        this.add.text(400, 300, 'Game Over\nScore: ' + this.score, {
-            fontSize: '64px',
-            fill: '#fff',
-            align: 'center'
-        }).setOrigin(0.5);
+        // 在玩家飞机位置创建爆炸动画
+        const explosion = this.add.sprite(this.player.x, this.player.y, 'explosion');
+        explosion.play('explode');
+        
+        // 隐藏玩家飞机
+        this.player.setVisible(false);
+        
+        // 等待爆炸动画完成后显示游戏结算界面
+        explosion.on('animationcomplete', () => {
+            explosion.destroy();
+            this.scene.pause();
+            
+            // 创建半透明黑色背景
+            const overlay = this.add.rectangle(400, 300, 800, 600, 0x000000, 0.7);
+            
+            // 显示游戏结束文本
+            this.add.text(400, 250, 'Game Over', {
+                fontSize: '64px',
+                fill: '#fff',
+                align: 'center'
+            }).setOrigin(0.5);
+            
+            // 显示最终得分
+            this.add.text(400, 350, `Final Score: ${this.score}`, {
+                fontSize: '48px',
+                fill: '#fff',
+                align: 'center'
+            }).setOrigin(0.5);
+        });
     }
 }
