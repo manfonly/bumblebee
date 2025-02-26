@@ -72,8 +72,13 @@ export default class GameScene extends Phaser.Scene {
         };
     }
     create() {
+        // 获取游戏尺寸
+        this.screenWidth = this.game.config.width;
+        this.screenHeight = this.game.config.height;
+        this.enemySpeed = this.screenHeight / 300;  // 根据屏幕高度计算敌人速度
+
         // 创建玩家飞机
-        this.player = this.add.sprite(400, 550, 'player');
+        this.player = this.add.sprite(this.screenWidth/2, this.screenHeight * 0.9, 'player');
         this.player.setInteractive();
         this.input.setDraggable(this.player);
         
@@ -163,8 +168,8 @@ export default class GameScene extends Phaser.Scene {
 
         // 更新敌人位置
         this.enemies.children.each((enemy) => {
-            enemy.y += 2;
-            if (enemy.y > 600) {
+            enemy.y += this.enemySpeed;
+            if (enemy.y > this.screenHeight) {
                 enemy.destroy();
             }
         });
@@ -180,28 +185,25 @@ export default class GameScene extends Phaser.Scene {
 
     spawnEnemyWave() {
         this.waveCount++;
-        // 计算当前波次的敌机数量（每波增加20%）
         const enemyCount = Math.floor(this.baseEnemyCount * Math.pow(1.2, this.waveCount - 1));
         
-        const enemiesPerRow = 8; // 每排8架敌机
-        const rows = Math.ceil(enemyCount / enemiesPerRow); // 计算需要多少排
-        const minSpacing = 60; // 最小间距
+        const enemiesPerRow = Math.floor(this.screenWidth / 100); // 根据屏幕宽度决定每排敌人数量
+        const rows = Math.ceil(enemyCount / enemiesPerRow);
+        const minSpacing = this.screenWidth / 13; // 动态计算间距
         
         for (let row = 0; row < rows; row++) {
             const enemiesInThisRow = Math.min(enemiesPerRow, enemyCount - row * enemiesPerRow);
-            let lastX = 50; // 起始位置
+            let lastX = this.screenWidth * 0.05; // 起始位置为屏幕宽度的5%
             
             for (let col = 0; col < enemiesInThisRow; col++) {
-                // 在最小间距基础上添加随机间距
-                const spacing = minSpacing + Phaser.Math.Between(0, 40);
+                const spacing = minSpacing + Phaser.Math.Between(0, this.screenWidth * 0.05);
                 const x = lastX + spacing;
-                const y = row * 60; // 每排之间的垂直间距
+                const y = row * (this.screenHeight * 0.1); // 垂直间距为屏幕高度的10%
                 
-                // 确保不超出屏幕右边界
-                if (x < 750) {
+                if (x < this.screenWidth * 0.95) { // 限制在屏幕宽度的95%以内
                     const enemy = this.enemies.create(x, y, 'enemy');
                     enemy.setScale(0.8);
-                    lastX = x; // 更新上一个敌机的位置
+                    lastX = x;
                 }
             }
         }
