@@ -9,6 +9,15 @@ export default class GameScene extends Phaser.Scene {
         this.baseEnemyCount = 5;
         this.waveCount = 0;
         this.treasureTypes = ['C-RUN', 'C-STAT', 'EW', 'BX', 'FuSa', 'eTrust', 'VS'];
+        this.treasureImages = {
+            'C-RUN': 'JewelBlue',
+            'C-STAT': 'JewelBrown',
+            'EW': 'JewelGreen',
+            'BX': 'JewelOrange',
+            'FuSa': 'JewelRed',
+            'eTrust': 'JewelViolet',
+            'VS': 'JewelWhite'
+        };
     }
 
     preload() {
@@ -24,8 +33,41 @@ export default class GameScene extends Phaser.Scene {
             startFrame: 0,
             endFrame: 8        // 9帧动画
         });
+        
+        // 加载所有宝石图片
+        this.load.image('JewelBlue', 'assets/JewelBlue.png');
+        this.load.image('JewelBrown', 'assets/JewelBrown.png');
+        this.load.image('JewelGreen', 'assets/JewelGreen.png');
+        this.load.image('JewelOrange', 'assets/JewelOrange.png');
+        this.load.image('JewelRed', 'assets/JewelRed.png');
+        this.load.image('JewelViolet', 'assets/JewelViolet.png');
+        this.load.image('JewelWhite', 'assets/JewelWhite.png');
     }
 
+    spawnTreasure() {
+        const x = Phaser.Math.Between(50, 750);
+        const type = this.treasureTypes[Phaser.Math.Between(0, this.treasureTypes.length - 1)];
+        const imageKey = this.treasureImages[type];
+        
+        const treasure = this.treasures.create(x, 0, imageKey);
+        treasure.setScale(0.1);
+        treasure.type = type; // 存储宝石类型
+        
+        // 在宝石上方显示类型文本
+        const text = this.add.text(x, -20, type, {
+            fontSize: '16px',
+            fill: '#fff'
+        }).setOrigin(0.5);
+        
+        // 让文本跟随宝石移动
+        treasure.textLabel = text;
+        
+        // 更新时同步文本位置
+        treasure.update = function() {
+            this.textLabel.x = this.x;
+            this.textLabel.y = this.y - 20;
+        };
+    }
     create() {
         // 创建玩家飞机
         this.player = this.add.sprite(400, 550, 'player');
@@ -88,7 +130,8 @@ export default class GameScene extends Phaser.Scene {
 
         // 设置碰撞检测
         this.physics.add.collider(this.bullets, this.enemies, this.hitEnemy, null, this);
-        this.physics.add.overlap(this.player, this.enemies, this.gameOver, null, this);  // 使用 overlap 替代 collider
+        this.physics.add.overlap(this.player, this.enemies, this.gameOver, null, this);
+        this.physics.add.overlap(this.player, this.treasures, this.collectTreasure, null, this); // 添加宝箱碰撞检测
 
         // 立即生成第一波敌机
         this.spawnEnemyWave();
@@ -219,28 +262,13 @@ export default class GameScene extends Phaser.Scene {
             }).setOrigin(0.5);
         });
     }
-
-    spawnTreasure() {
-        const x = Phaser.Math.Between(50, 750);
-        const treasure = this.treasures.create(x, 0, 'treasure');
-        treasure.setScale(0.6);
-        
-        // 随机选择一个宝箱类型
-        const type = this.treasureTypes[Phaser.Math.Between(0, this.treasureTypes.length - 1)];
-        
-        // 在宝箱上方显示类型文本
-        const text = this.add.text(x, -20, type, {
-            fontSize: '16px',
-            fill: '#fff'
-        }).setOrigin(0.5);
-        
-        // 让文本跟随宝箱移动
-        treasure.textLabel = text;
-        
-        // 更新时同步文本位置
-        treasure.update = function() {
-            this.textLabel.x = this.x;
-            this.textLabel.y = this.y - 20;
-        };
+    // 添加收集宝箱的方法
+    collectTreasure(player, treasure) {
+        // 销毁宝箱文本标签
+        if (treasure.textLabel) {
+            treasure.textLabel.destroy();
+        }
+        // 销毁宝箱
+        treasure.destroy();
     }
 }
