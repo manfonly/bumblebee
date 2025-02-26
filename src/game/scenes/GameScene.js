@@ -4,10 +4,11 @@ export default class GameScene extends Phaser.Scene {
     constructor() {
         super('GameScene');
         this.score = 0;
-        this.gameTime = 300; // 总游戏时间300秒
-        this.waveInterval = 10; // 每10秒一波敌人
-        this.baseEnemyCount = 5; // 初始敌机数量
-        this.waveCount = 0; // 波数计数
+        this.gameTime = 300;
+        this.waveInterval = 7;
+        this.baseEnemyCount = 5;
+        this.waveCount = 0;
+        this.treasureTypes = ['C-RUN', 'C-STAT', 'EW', 'BX', 'FuSa', 'eTrust', 'VS'];
     }
 
     preload() {
@@ -24,6 +25,7 @@ export default class GameScene extends Phaser.Scene {
             endFrame: 8        // 9帧动画
         });
     }
+
     create() {
         // 创建玩家飞机
         this.player = this.add.sprite(400, 550, 'player');
@@ -33,10 +35,10 @@ export default class GameScene extends Phaser.Scene {
         // 启用玩家飞机的物理系统
         this.physics.add.existing(this.player);
 
-        // 创建分数显示
-        this.scoreText = this.add.text(16, 16, 'Score: 0', { fontSize: '32px', fill: '#fff' });
-        this.timeText = this.add.text(16, 56, 'Time: 300', { fontSize: '32px', fill: '#fff' });
-
+        // 修改状态显示的字体大小和添加速度显示
+        this.scoreText = this.add.text(16, 16, 'Score: 0', { fontSize: '22px', fill: '#fff' });
+        this.timeText = this.add.text(16, 46, 'Time: 300', { fontSize: '22px', fill: '#fff' });
+        this.speedText = this.add.text(16, 76, 'Speed: LOW', { fontSize: '22px', fill: '#fff' });
         // 设置拖动事件
         this.input.on('drag', (pointer, gameObject, dragX, dragY) => {
             gameObject.x = dragX;
@@ -57,9 +59,9 @@ export default class GameScene extends Phaser.Scene {
             loop: true
         });
 
-        // 每10秒生成一波敌人
+        // 每7秒生成一波敌人
         this.time.addEvent({
-            delay: 10000,
+            delay: 7000,
             callback: this.spawnEnemyWave,
             callbackScope: this,
             loop: true
@@ -90,6 +92,17 @@ export default class GameScene extends Phaser.Scene {
 
         // 立即生成第一波敌机
         this.spawnEnemyWave();
+
+        // 创建宝箱组
+        this.treasures = this.physics.add.group();
+
+        // 每5秒生成一个宝箱
+        this.time.addEvent({
+            delay: 5000,
+            callback: this.spawnTreasure,
+            callbackScope: this,
+            loop: true
+        });
     }
 
     update() {
@@ -108,6 +121,14 @@ export default class GameScene extends Phaser.Scene {
                 enemy.destroy();
             }
         });
+
+        // 更新宝箱位置
+        this.treasures.children.each((treasure) => {
+            treasure.y += 2.2; // 敌机速度的1.1倍
+            if (treasure.y > 600) {
+                treasure.destroy();
+            }
+        });
     }
 
     spawnEnemyWave() {
@@ -115,13 +136,29 @@ export default class GameScene extends Phaser.Scene {
         // 计算当前波次的敌机数量（每波增加20%）
         const enemyCount = Math.floor(this.baseEnemyCount * Math.pow(1.2, this.waveCount - 1));
         
-        for (let i = 0; i < enemyCount; i++) {
-            const x = Phaser.Math.Between(50, 750);
-            const enemy = this.enemies.create(x, 0, 'enemy');
-            enemy.setScale(0.8);
+        const enemiesPerRow = 8; // 每排8架敌机
+        const rows = Math.ceil(enemyCount / enemiesPerRow); // 计算需要多少排
+        const minSpacing = 60; // 最小间距
+        
+        for (let row = 0; row < rows; row++) {
+            const enemiesInThisRow = Math.min(enemiesPerRow, enemyCount - row * enemiesPerRow);
+            let lastX = 50; // 起始位置
+            
+            for (let col = 0; col < enemiesInThisRow; col++) {
+                // 在最小间距基础上添加随机间距
+                const spacing = minSpacing + Phaser.Math.Between(0, 40);
+                const x = lastX + spacing;
+                const y = row * 60; // 每排之间的垂直间距
+                
+                // 确保不超出屏幕右边界
+                if (x < 750) {
+                    const enemy = this.enemies.create(x, y, 'enemy');
+                    enemy.setScale(0.8);
+                    lastX = x; // 更新上一个敌机的位置
+                }
+            }
         }
     }
-
     fireBullet() {
         const bullet = this.bullets.create(this.player.x, this.player.y - 20, 'bullet');
     }
@@ -181,5 +218,29 @@ export default class GameScene extends Phaser.Scene {
                 align: 'center'
             }).setOrigin(0.5);
         });
+    }
+
+    spawnTreasure() {
+        const x = Phaser.Math.Between(50, 750);
+        const treasure = this.treasures.create(x, 0, 'treasure');
+        treasure.setScale(0.6);
+        
+        // 随机选择一个宝箱类型
+        const type = this.treasureTypes[Phaser.Math.Between(0, this.treasureTypes.length - 1)];
+        
+        // 在宝箱上方显示类型文本
+        const text = this.add.text(x, -20, type, {
+            fontSize: '16px',
+            fill: '#fff'
+        }).setOrigin(0.5);
+        
+        // 让文本跟随宝箱移动
+        treasure.textLabel = text;
+        
+        // 更新时同步文本位置
+        treasure.update = function() {
+            this.textLabel.x = this.x;
+            this.textLabel.y = this.y - 20;
+        };
     }
 }
